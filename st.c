@@ -2639,6 +2639,8 @@ copyurl(const Arg *arg) {
 	LIMIT(row, term.top, term.bot);
 	startrow = row;
 
+	// 137: iterate through each column of a row
+	//	and fill linestr with contents on the row
 	/* find the start of the last url before selection */
 	do {
 		for (i = 0; i < term.col; ++i) {
@@ -2647,6 +2649,8 @@ copyurl(const Arg *arg) {
 			linestr[i] = term.line[row][i].u;
 		}
 		linestr[term.col] = '\0';
+
+		// 137: on multiple URLs matches whole line
 		if ((match = strstr(linestr, "http://"))
 				|| (match = strstr(linestr, "https://")))
 			break;
@@ -2659,6 +2663,9 @@ copyurl(const Arg *arg) {
 		selclear();
 		sel.ob.x = strlen(linestr) - strlen(match);
 
+		// 137: the space between two URLs causes the
+		//	the match loop to stop after first URL
+		//	was parsed
 		/* trim the rest of the line from the url match */
 		for (c = match; *c != '\0'; ++c)
 			if (!strchr(URLCHARS, *c)) {
