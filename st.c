@@ -2650,7 +2650,8 @@ copyurl(const Arg *arg) {
 		}
 		linestr[term.col] = '\0';
 
-		// 137: on multiple URLs matches whole line
+		// 137: on multiple URLs matches whole line (this is a simple optimization->dont 
+		//	check further because line is known to have URL)
 		if ((match = strstr(linestr, "http://"))
 				|| (match = strstr(linestr, "https://")))
 			break;
@@ -2658,6 +2659,10 @@ copyurl(const Arg *arg) {
 			row = term.bot;
 	} while (row != startrow);
 
+	char* linestr_copy = strdup( linestr );
+	char* tok = strtok( linestr_copy, " " );
+	while( tok != NULL )
+		tok = strtok( NULL, " " );
 	if (match) {
 		/* must happen before trim */
 		selclear();
@@ -2685,4 +2690,5 @@ copyurl(const Arg *arg) {
 	}
 
 	free(linestr);
+	free( linestr_copy );
 }
