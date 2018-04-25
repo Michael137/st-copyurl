@@ -948,7 +948,7 @@ xloadfonts(char *fontstr, double fontsize)
 			defaultfontsize = fontval;
 	}
 
-	/* Setting character width and height. */
+	/* Setting characterewidth and height. */
 	win.cw = ceilf(dc.font.width * cwscale);
 	win.ch = ceilf(dc.font.height * chscale);
 
@@ -1948,4 +1948,20 @@ run:
 	run();
 
 	return 0;
+}
+
+void xsetselcolor(char* tmp )
+{
+	printf("%s\n", tmp);
+	XWindowAttributes winattr;
+	XColor xcolour;
+	xcolour.red = 32000;
+	xcolour.green = 65000;
+	xcolour.blue = 32000;
+	xcolour.flags = DoRed | DoGreen | DoBlue;
+	XGetWindowAttributes(xw.dpy, xw.win,&winattr);
+	XAllocColor( xw.dpy, xw.cmap, &xcolour );
+	XSetForeground( xw.dpy, dc.gc, xcolour.pixel );
+	XFillRectangle( xw.dpy, xw.win, dc.gc, 20, 20, winattr.width, 30 );
+	XFlush( xw.dpy );
 }

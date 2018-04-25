@@ -2654,7 +2654,10 @@ copyurl(const Arg *arg) {
 		//	check further because line is known to have URL)
 		if ((match = strstr(linestr, "http://"))
 				|| (match = strstr(linestr, "https://")))
+		{
+//			term.line[row][i].u = "\033[4m";
 			break;
+		}
 		if (--row < term.top)
 			row = term.bot;
 	} while (row != startrow);
@@ -2677,7 +2680,11 @@ copyurl(const Arg *arg) {
 				*c = '\0';
 				break;
 			}
-
+		int* attrs;
+		attrs[0] = ATTR_UNDERLINE;
+		//tsetattr(attrs, 1);
+		xbell();
+		xsetselcolor("abc");
 		/* select and copy */
 		sel.mode = 1;
 		sel.type = SEL_REGULAR;
