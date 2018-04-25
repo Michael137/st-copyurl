@@ -222,6 +222,8 @@ static char base64dec_getc(const char **);
 
 static ssize_t xwrite(int, const char *, size_t);
 
+static const char * str_last_of( const char*, const char* );
+
 /* Globals */
 static Term term;
 static Selection sel;
@@ -2618,9 +2620,25 @@ redraw(void)
 	draw();
 }
 
+/*
+** Will return a pointer to the start of
+** the last found string "find" within
+** the given string "str". Returns NULL
+** if "find" does not exist in "str".
+*/
+const char* str_last_of(const char* str, const char* find)
+{
+	size_t find_len = strlen(find);
+	const char* found;
+	for( found = str + strlen( str ) - find_len; found >= str; --found )
+		if( strncmp( found, find, strlen( find ) ) == 0 )
+			return found;
+
+	return NULL;
+}
+
 /* select and copy the previous url on screen (do nothing if there's no url).
  * known bug: doesn't handle urls that span multiple lines (wontfix)
- * known bug: only finds first url on line (mightfix)
  */
 void
 copyurl(const Arg *arg) {
@@ -2631,11 +2649,17 @@ copyurl(const Arg *arg) {
 		"abcdefghijklmnopqrstuvwxyz"
 		"0123456789-._~:/?#@!$&'*+,;=%";
 
+	// [ row, col ] of last match
+	static int last_match_pos[] = {-1,-1};
+	printf( "%d %d", last_match_pos[0], last_match_pos[1]);
+
 	int i, row, startrow;
 	char *linestr = calloc(sizeof(char), term.col+1); /* assume ascii */
 	char *c, *match = NULL;
 
-	row = (sel.ob.x >= 0 && sel.nb.y > 0) ? sel.nb.y-1 : term.bot;
+//	row = (sel.ob.x >= 0 && sel.nb.y > 0) ? sel.nb.y-1 : term.bot;
+	int startcol = (last_match_pos[0] >= 0) ? last_match_pos[0] : term.col;
+	row = (last_match_pos[1] >= 0) ? last_match_pos[1] : term.bot;
 	LIMIT(row, term.top, term.bot);
 	startrow = row;
 
@@ -2643,7 +2667,7 @@ copyurl(const Arg *arg) {
 	//	and fill linestr with contents on the row
 	/* find the start of the last url before selection */
 	do {
-		for (i = 0; i < term.col; ++i) {
+		for (i = 0; i < startcol; ++i) {
 			if (term.line[row][i].u > 127) /* assume ascii */
 				continue;
 			linestr[i] = term.line[row][i].u;
@@ -2652,15 +2676,29 @@ copyurl(const Arg *arg) {
 
 		// 137: on multiple URLs matches whole line (this is a simple optimization->dont 
 		//	check further because line is known to have URL)
-		if ((match = strstr(linestr, "http://"))
-				|| (match = strstr(linestr, "https://")))
+//		if ((match = strstr(linestr, "http://"))
+//				|| (match = strstr(linestr, "https://")))
+//		{
+////			term.line[row][i].u = "\033[4m";
+//			break;
+
+		if( ( match = str_last_of(linestr, "http://") )
+				|| ( match = str_last_of(linestr, "https://") ) )
 		{
-//			term.line[row][i].u = "\033[4m";
+			printf( "Match: %s\n", match );
+			printf( "Term col: %i\n", term.col );
+			printf( "Found match: %s", strstr( linestr, match ) );
+			last_match_pos[0] = term.col - strlen(strstr(linestr,match));
+			last_match_pos[1] = row;
 			break;
 		}
-		if (--row < term.top)
+
+		row = row - 1;
+		if (row < term.top)
+		{
 			row = term.bot;
-	} while (row != startrow);
+		} 
+	} while(row != term.top);//while (row != startrow);
 
 		
 	if (match) {
@@ -2674,6 +2712,8 @@ copyurl(const Arg *arg) {
 			printf("%s\n", tok);
 			tok = strtok( NULL, " " );
 		}
+//		printsel("arg" );
+//		ttywrite("arg",3,0);
 		/* must happen before trim */
 		selclear();
 		sel.ob.x = strlen(linestr) - strlen(match);
