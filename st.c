@@ -2662,11 +2662,18 @@ copyurl(const Arg *arg) {
 			row = term.bot;
 	} while (row != startrow);
 
-	char* linestr_copy = strdup( linestr );
-	char* tok = strtok( linestr_copy, " " );
-	while( tok != NULL )
-		tok = strtok( NULL, " " );
+		
 	if (match) {
+//		char* linestr_copy = strdup( linestr );
+		char* match_copy = strdup( match );
+		char* tok = strtok( match_copy, " " );
+		// TODO: read tokens in reverse and  match
+		// 		 against http pattern
+		while( tok != NULL )
+		{
+			printf("%s\n", tok);
+			tok = strtok( NULL, " " );
+		}
 		/* must happen before trim */
 		selclear();
 		sel.ob.x = strlen(linestr) - strlen(match);
@@ -2694,8 +2701,9 @@ copyurl(const Arg *arg) {
 		tsetdirt(sel.nb.y, sel.ne.y);
 		xsetsel(getsel());
 		xclipcopy();
+		free( match_copy );
 	}
 
 	free(linestr);
-	free( linestr_copy );
+	// free( linestr_copy );
 }
