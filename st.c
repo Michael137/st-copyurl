@@ -222,6 +222,8 @@ static char base64dec_getc(const char **);
 
 static ssize_t xwrite(int, const char *, size_t);
 
+static const char* str_last_of( const char*, const char* );
+
 /* Globals */
 static Term term;
 static Selection sel;
@@ -1950,6 +1952,20 @@ strdump(void)
 	fprintf(stderr, "ESC\\\n");
 }
 
+const char*
+str_last_of( const char* str, const char* find )
+{
+	const char* found;
+	for(found = str + strlen( str ) - strlen( find ); found >= str; --found)
+	{
+		printf("found: %s\n", found);
+		if(strncmp(found,find,strlen(find))==0)
+			return found;
+	}
+
+	return NULL;
+}
+
 void
 strreset(void)
 {
@@ -2661,22 +2677,45 @@ copyurl(const Arg *arg) {
 //	**		scan row from right to left
 //	**			if strstr(linestr,http(s)) then break and save(row,col)
 //	*/
-	int rw = term.bot;
+	static int last_pos[] = {-1,-1};
+//	printf( "%d %d\n", last_pos[0], last_pos[1]);
+	int rw = (last_pos[0] >= 0) ? last_pos[0] : term.bot;
+	int maxcl = (last_pos[1] > 0) ? last_pos[1] : term.col;
 	for( ; rw >= 0; --rw )
 	{
-		int cl = term.col - 1;
-		linestr[term.col] = '\0';
+		int cl = maxcl - 1;
+		//printf( "col: %d/%d\n", cl,maxcl);
+		linestr[maxcl] = '\0';
 		for( ; cl >= 0; --cl )
 		{
 			if (term.line[rw][cl].u > 127) /* assume ascii */
+				continue;
+			else if( last_pos[1] >= 0 && cl >= last_pos[1] )
 				continue;
 			linestr[cl] = (char) term.line[rw][cl].u;
 			//printf( "linestr: %i %i %i\n", linestr[cl], rw, cl );
 		}
 
-		if((match = strstr(linestr, "http://"))
-					|| (match = strstr(linestr, "https://")))
-			break;
+		//printf("linestring: %s\n", linestr);
+		if((match = str_last_of(linestr, "http://"))
+					|| (match = str_last_of(linestr, "https://")))
+		{
+			int curr_col = strlen(linestr)-strlen(match);
+//			printf( "match at %d: %s\n", curr_col,match);
+
+			if( -1 == last_pos[1] && rw == last_pos[0] )
+			{
+				rw = term.bot;
+			}
+			else
+			{
+				last_pos[0] = rw;
+				last_pos[1] = curr_col;
+				break;
+			}
+		}
+		maxcl = term.col;
+		last_pos[1] = -1;
 
 		//printf( "row %d\n", rw );
 	}
