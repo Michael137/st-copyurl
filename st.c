@@ -2647,6 +2647,14 @@ copyurl(const Arg *arg) {
 		"abcdefghijklmnopqrstuvwxyz"
 		"0123456789-._~:/?#@!$&'*+,;=%";
 
+		int ctr = sel.ob.x;
+		int j = 0;
+		for( ; j < sel.oe.x - sel.ob.x + 1; ++j )
+		{
+			term.line[sel.nb.y][ctr+j].fg = defaultfg;
+			term.line[sel.nb.y][ctr+j].bg = defaultbg;
+		}
+
 	int i, row, startrow;
 	char *linestr = calloc(sizeof(char), term.col+1); /* assume ascii */
 	char *c = NULL;
@@ -2703,7 +2711,6 @@ copyurl(const Arg *arg) {
 		{
 			int curr_col = strlen(linestr)-strlen(match);
 //			printf( "match at %d: %s\n", curr_col,match);
-
 			if( -1 == last_pos[1] && rw == last_pos[0] )
 			{
 				rw = term.bot;
@@ -2736,6 +2743,15 @@ copyurl(const Arg *arg) {
 				*c = '\0';
 				break;
 			}
+
+//		printf( "ctr: %d\n", sel.ob.x );
+		int ctr = sel.ob.x;
+		int j = 0;
+		for( ; j < strlen( match ); ++j )
+		{
+			term.line[row][ctr+j].fg = defaultbg;
+			term.line[row][ctr+j].bg = defaultfg;
+		}
 
 		/* select and copy */
 		sel.mode = 1;
