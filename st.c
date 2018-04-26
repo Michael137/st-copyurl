@@ -222,7 +222,7 @@ static char base64dec_getc(const char **);
 
 static ssize_t xwrite(int, const char *, size_t);
 
-static const char* str_last_of( const char*, const char* );
+static char* str_last_of( const char*, const char* );
 
 /* Globals */
 static Term term;
@@ -1952,7 +1952,7 @@ strdump(void)
 	fprintf(stderr, "ESC\\\n");
 }
 
-const char*
+char*
 str_last_of( const char* str, const char* find )
 {
 	const char* found;
@@ -1960,7 +1960,7 @@ str_last_of( const char* str, const char* find )
 	{
 		printf("found: %s\n", found);
 		if(strncmp(found,find,strlen(find))==0)
-			return found;
+			return (char*)found;
 	}
 
 	return NULL;
@@ -2649,7 +2649,8 @@ copyurl(const Arg *arg) {
 
 	int i, row, startrow;
 	char *linestr = calloc(sizeof(char), term.col+1); /* assume ascii */
-	char *c, *match = NULL;
+	char *c = NULL;
+	char *match = NULL;
 
 	row = (sel.ob.x >= 0 && sel.nb.y > 0) ? sel.nb.y-1 : term.bot;
 	LIMIT(row, term.top, term.bot);
@@ -2698,7 +2699,7 @@ copyurl(const Arg *arg) {
 
 		//printf("linestring: %s\n", linestr);
 		if((match = str_last_of(linestr, "http://"))
-					|| (match = str_last_of(linestr, "https://")))
+			|| (match = str_last_of(linestr, "https://")))
 		{
 			int curr_col = strlen(linestr)-strlen(match);
 //			printf( "match at %d: %s\n", curr_col,match);
