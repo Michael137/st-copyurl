@@ -222,8 +222,6 @@ static char base64dec_getc(const char **);
 
 static ssize_t xwrite(int, const char *, size_t);
 
-static const char * str_last_of( const char*, const char* );
-
 /* Globals */
 static Term term;
 static Selection sel;
@@ -2620,25 +2618,9 @@ redraw(void)
 	draw();
 }
 
-/*
-** Will return a pointer to the start of
-** the last found string "find" within
-** the given string "str". Returns NULL
-** if "find" does not exist in "str".
-*/
-const char* str_last_of(const char* str, const char* find)
-{
-	size_t find_len = strlen(find);
-	const char* found;
-	for( found = str + strlen( str ) - find_len; found >= str; --found )
-		if( strncmp( found, find, strlen( find ) ) == 0 )
-			return found;
-
-	return NULL;
-}
-
 /* select and copy the previous url on screen (do nothing if there's no url).
  * known bug: doesn't handle urls that span multiple lines (wontfix)
+ * known bug: only finds first url on line (mightfix)
  */
 void
 copyurl(const Arg *arg) {
@@ -2649,89 +2631,72 @@ copyurl(const Arg *arg) {
 		"abcdefghijklmnopqrstuvwxyz"
 		"0123456789-._~:/?#@!$&'*+,;=%";
 
-	// [ row, col ] of last match
-	static int last_match_pos[] = {-1,-1};
-	printf( "%d %d", last_match_pos[0], last_match_pos[1]);
-
 	int i, row, startrow;
 	char *linestr = calloc(sizeof(char), term.col+1); /* assume ascii */
 	char *c, *match = NULL;
 
-//	row = (sel.ob.x >= 0 && sel.nb.y > 0) ? sel.nb.y-1 : term.bot;
-	int startcol = (last_match_pos[0] >= 0) ? last_match_pos[0] : term.col;
-	row = (last_match_pos[1] >= 0) ? last_match_pos[1] : term.bot;
+	row = (sel.ob.x >= 0 && sel.nb.y > 0) ? sel.nb.y-1 : term.bot;
 	LIMIT(row, term.top, term.bot);
 	startrow = row;
 
-	// 137: iterate through each column of a row
-	//	and fill linestr with contents on the row
-	/* find the start of the last url before selection */
-	do {
-		for (i = 0; i < startcol; ++i) {
-			if (term.line[row][i].u > 127) /* assume ascii */
-				continue;
-			linestr[i] = term.line[row][i].u;
-		}
-		linestr[term.col] = '\0';
-
-		// 137: on multiple URLs matches whole line (this is a simple optimization->dont 
-		//	check further because line is known to have URL)
+//	/* find the start of the last url before selection */
+//	do {
+//		for (i = 0; i < term.col; ++i) {
+//			if (term.line[row][i].u > 127) /* assume ascii */
+//				continue;
+//			linestr[i] = term.line[row][i].u;
+//			printf( "linestr: %i %i %i\n", linestr[i], row, i );
+//		}
+//		linestr[term.col] = '\0';
 //		if ((match = strstr(linestr, "http://"))
 //				|| (match = strstr(linestr, "https://")))
-//		{
-////			term.line[row][i].u = "\033[4m";
 //			break;
+//		if (--row < term.top)
+//			row = term.bot;
+//	} while (row != startrow);
 
-		if( ( match = str_last_of(linestr, "http://") )
-				|| ( match = str_last_of(linestr, "https://") ) )
+//	/*
+//	** start from bottom right
+//	**	for each row
+//	**		scan row from right to left
+//	**			if strstr(linestr,http(s)) then break and save(row,col)
+//	*/
+	int rw = term.bot;
+	for( ; rw >= 0; --rw )
+	{
+		int cl = term.col - 1;
+		linestr[term.col] = '\0';
+		for( ; cl >= 0; --cl )
 		{
-			printf( "Match: %s\n", match );
-			printf( "Term col: %i\n", term.col );
-			printf( "Found match: %s", strstr( linestr, match ) );
-			last_match_pos[0] = term.col - strlen(strstr(linestr,match));
-			last_match_pos[1] = row;
+			if (term.line[rw][cl].u > 127) /* assume ascii */
+				continue;
+			linestr[cl] = (char) term.line[rw][cl].u;
+			//printf( "linestr: %i %i %i\n", linestr[cl], rw, cl );
+		}
+
+		if((match = strstr(linestr, "http://"))
+					|| (match = strstr(linestr, "https://")))
 			break;
-		}
 
-		row = row - 1;
-		if (row < term.top)
-		{
-			row = term.bot;
-		} 
-	} while(row != term.top);//while (row != startrow);
+		//printf( "row %d\n", rw );
+	}
 
-		
+	row = rw;
+
+	//printf( "%s\n", linestr );
+
 	if (match) {
-//		char* linestr_copy = strdup( linestr );
-		char* match_copy = strdup( match );
-		char* tok = strtok( match_copy, " " );
-		// TODO: read tokens in reverse and  match
-		// 		 against http pattern
-		while( tok != NULL )
-		{
-			printf("%s\n", tok);
-			tok = strtok( NULL, " " );
-		}
-//		printsel("arg" );
-//		ttywrite("arg",3,0);
 		/* must happen before trim */
 		selclear();
 		sel.ob.x = strlen(linestr) - strlen(match);
 
-		// 137: the space between two URLs causes the
-		//	the match loop to stop after first URL
-		//	was parsed
 		/* trim the rest of the line from the url match */
 		for (c = match; *c != '\0'; ++c)
 			if (!strchr(URLCHARS, *c)) {
 				*c = '\0';
 				break;
 			}
-		int* attrs;
-		attrs[0] = ATTR_UNDERLINE;
-		//tsetattr(attrs, 1);
-		xbell();
-		xsetselcolor("abc");
+
 		/* select and copy */
 		sel.mode = 1;
 		sel.type = SEL_REGULAR;
@@ -2741,9 +2706,7 @@ copyurl(const Arg *arg) {
 		tsetdirt(sel.nb.y, sel.ne.y);
 		xsetsel(getsel());
 		xclipcopy();
-		free( match_copy );
 	}
 
 	free(linestr);
-	// free( linestr_copy );
 }
