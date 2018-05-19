@@ -2630,52 +2630,13 @@ redraw(void)
 	draw();
 }
 
-/* select and copy the previous url on screen (do nothing if there's no url).
- * known bug: doesn't handle urls that span multiple lines (wontfix)
- * known bug: only finds first url on line (mightfix)
- */
+/*
+** select and copy the previous url on screen (do nothing if there's no url).
+** Scans URLs from bottom right of the screen to the top left. Will select
+** URL across multiple lines
+*/
 void
 copyurl(const Arg *arg) {
-	//int i, row, startrow;
-	//char *linestr = calloc(sizeof(char), term.col+1); /* assume ascii */
-	//char *c, *match = NULL;
-
-	//// Determine row on which to start. Row with last occurrance of URL
-	//row = (sel.ob.x >= 0 && sel.nb.y > 0) ? sel.nb.y-1 : term.bot;
-	//LIMIT(row, term.top, term.bot);
-	//startrow = row;
-
-	// TODO: Determine column in which to start
-	// ...
-
-	// TODO: refactor below loop to account for URLs on same line,
-	// 		 URLs spanning multiple lines, more robust URL identification;
-	// 		 for every row (from bottom)
-	// 		 	for every column (from right)
-	// 		 		read in word until space
-	//				check whether word is url?
-	//					if false than go to next word
-	// Search through all rows and columns and match new url
-//	do {
-//		// Fills linestr with contents of row
-//		for (i = 0; i < term.col; ++i) {
-//			if (term.line[row][i].u > 127) /* assume ascii */
-//				continue;
-//			linestr[i] = term.line[row][i].u;
-//		}
-//		linestr[term.col] = '\0';
-//
-//		// Determine whether line contains a URL
-//		// TODO: replace with call to isurl()
-//		if ((match = strstr(linestr, "http://"))
-//				|| (match = strstr(linestr, "https://")))
-//			break;
-//
-//		// If top of terminal is reached, cycle to the bottom
-//		if (--row < term.top)
-//			row = term.bot;
-//	} while (row != startrow);
-
 	// remove highlighting from previous selection if any
 	if(sel.ob.x >= 0 && sel.oe.x >= 0)
 		tsetcolor(sel.nb.y, sel.ob.x, sel.oe.x + 1, defaultfg, defaultbg);
@@ -2687,11 +2648,12 @@ copyurl(const Arg *arg) {
 		"abcdefghijklmnopqrstuvwxyz"
 		"0123456789-._~:/?#@!$&'*+,;=%";
 
-	int startrow = (sel.ob.x >= 0 && sel.nb.y > 0) ? sel.nb.y : term.bot;
+	int startrow = (sel.nb.y >= 0) ? sel.nb.y : term.bot;
 	LIMIT(startrow, term.top, term.bot);
-	int startcol = (sel.ob.x > 0) ? sel.nb.x : term.col;
+	int startcol = (sel.ob.x >= 0) ? sel.nb.x : term.col;
 	LIMIT(startcol, 0, term.col);
 	int colctr, rowctr = 0;
+	int rowbegin, rowend = 0;
 	char *linestr = calloc(sizeof(char), term.col * term.row); /* assume ascii */
 	for(int i = 0; i < term.col * term.row; ++i)
 		linestr[i] = ' ';
@@ -2711,8 +2673,10 @@ copyurl(const Arg *arg) {
 
 			linestr[term.col * rowctr + colctr] = c;
 			if(c != ' ') {
-				if(!matchingStarted)
+				if(!matchingStarted) {
+					rowbegin = rowctr;
 					matchingStarted = 1;
+				}
 			} else {
 				matchingStarted = 0;
 			}
@@ -2720,6 +2684,7 @@ copyurl(const Arg *arg) {
 			if(matchingStarted) {
 				if((match = strstr(linestr, "https://"))
 					|| (match = strstr(linestr, "http://"))) {
+					rowend = rowctr;
 					break;
 				}
 			}
@@ -2731,24 +2696,26 @@ copyurl(const Arg *arg) {
 		}
 
 		--rowctr;
-		startcol = term.col;
+		startcol = term.col - 1;
 	} while(rowctr != startrow);
-	
+
 	if (match) {
 		/* must happen before trim */
 		selclear();
 		sel.ob.x = colctr;
-		char *c = NULL;
 
 		LIMIT(rowctr, term.top, term.bot);
-		// highlight selection by inverting terminal colors
-		tsetcolor(rowctr, sel.ob.x, sel.ob.x + strlen( match ), defaultbg, defaultfg);
 
 		/* select and copy */
 		sel.mode = 1;
 		sel.type = SEL_REGULAR;
 		sel.oe.x = sel.ob.x + strlen(match)-1;
 		sel.ob.y = sel.oe.y = rowctr;
+		printf("selection: %d %d %d %d vs. %d %d\n", sel.ob.x,sel.oe.x,sel.ob.y,sel.oe.y,rowbegin,rowend);
+
+		// highlight selection by inverting terminal colors
+		tsetcolor(rowctr, sel.ob.x, sel.ob.x + strlen( match ), defaultbg, defaultfg);
+
 		selnormalize();
 		tsetdirt(sel.nb.y, sel.ne.y);
 		xsetsel(getsel());
