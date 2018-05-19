@@ -2687,13 +2687,10 @@ copyurl(const Arg *arg) {
 		"abcdefghijklmnopqrstuvwxyz"
 		"0123456789-._~:/?#@!$&'*+,;=%";
 
-	printf("starting with: %d %d %d %d\n", sel.ob.x, sel.nb.x, sel.ob.y, sel.nb.y );
 	int startrow = (sel.ob.x >= 0 && sel.nb.y > 0) ? sel.nb.y : term.bot;
 	LIMIT(startrow, term.top, term.bot);
-	printf("startrow: %d\n", startrow);
 	int startcol = (sel.ob.x > 0) ? sel.nb.x : term.col;
 	LIMIT(startcol, 0, term.col);
-	printf("startcol: %d\n", startcol);
 	int colctr, rowctr = 0;
 	char *linestr = calloc(sizeof(char), term.col * term.row); /* assume ascii */
 	for(int i = 0; i < term.col * term.row; ++i)
@@ -2703,13 +2700,16 @@ copyurl(const Arg *arg) {
 	char * match = NULL;
 	rowctr = startrow;
 	do {
-		if(rowctr < 0)
+		if(rowctr < 0) {
 			rowctr = term.bot;
+			for(int i = 0; i < term.col * term.row; ++i)
+				linestr[i] = ' ';
+		}
+
 		for(colctr = startcol; colctr >= 0; --colctr) {
 			char c = term.line[rowctr][colctr].u;
 
 			linestr[term.col * rowctr + colctr] = c;
-			//printf("chars:%c",linestr[term.col * rowctr + colctr]);
 			if(c != ' ') {
 				if(!matchingStarted)
 					matchingStarted = 1;
@@ -2718,12 +2718,11 @@ copyurl(const Arg *arg) {
 			}
 
 			if(matchingStarted) {
-				if((match = strstr(linestr, "dell"))) {
-					printf("matched final: %d %d\n", rowctr,colctr);
+				if((match = strstr(linestr, "https://"))
+					|| (match = strstr(linestr, "http://"))) {
 					break;
 				}
 			}
-			//printf("\n");
 		}
 
 		if(match) {
@@ -2733,7 +2732,6 @@ copyurl(const Arg *arg) {
 
 		--rowctr;
 		startcol = term.col;
-		printf("rowctr %d\n", rowctr);
 	} while(rowctr != startrow);
 	
 	if (match) {
