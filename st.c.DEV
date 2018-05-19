@@ -2711,7 +2711,10 @@ copyurl(const Arg *arg) {
 		sel.type = SEL_REGULAR;
 		sel.oe.x = sel.ob.x + strlen(match)-1;
 		sel.ob.y = sel.oe.y = rowctr;
-		printf("selection: %d %d %d %d vs. %d %d\n", sel.ob.x,sel.oe.x,sel.ob.y,sel.oe.y,rowbegin,rowend);
+//		sel.ob.y = rowbegin;
+//		sel.oe.y = rowend;
+		//printf("here\n");
+		//printf("selection: %d %d %d %d vs. %d %d\n", sel.ob.x,sel.oe.x,sel.ob.y,sel.oe.y,rowbegin,rowend);
 
 		// highlight selection by inverting terminal colors
 		tsetcolor(rowctr, sel.ob.x, sel.ob.x + strlen( match ), defaultbg, defaultfg);
@@ -2719,6 +2722,7 @@ copyurl(const Arg *arg) {
 		selnormalize();
 		tsetdirt(sel.nb.y, sel.ne.y);
 		xsetsel(getsel());
+		printf("selected: %s\n", getsel());
 		xclipcopy();
 	}
 
