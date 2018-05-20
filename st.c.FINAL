@@ -2630,13 +2630,16 @@ redraw(void)
 	draw();
 }
 
-char*
-findlast(char *str, const char* find)
+char *
+findlastany(char *str, const char** find, size_t len)
 {
 	char* found = NULL;
+	int i = 0;
 	for(found = str + strlen(str) - 1; found >= str; --found) {
-		if(strncmp(found, find, strlen(find)) == 0) {
-			return found;
+		for(i = 0; i < len; i++) {
+			if(strncmp(found, find[i], strlen(find[i])) == 0) {
+				return found;
+			}
 		}
 	}
 
@@ -2657,6 +2660,8 @@ copyurl(const Arg *arg) {
 	static char URLCHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		"abcdefghijklmnopqrstuvwxyz"
 		"0123456789-._~:/?#@!$&'*+,;=%";
+
+	static const char* URLSTRINGS[] = {"http://", "https://"};
 
 	/* remove highlighting from previous selection if any */
 	if(sel.ob.x >= 0 && sel.oe.x >= 0)
@@ -2695,8 +2700,8 @@ copyurl(const Arg *arg) {
 		}
 		linestr[term.col] = '\0';
 
-		if ((match = findlast(linestr, "http://"))
-			|| (match = findlast(linestr, "https://")))
+		if ((match = findlastany(linestr, URLSTRINGS,
+						sizeof(URLSTRINGS)/sizeof(URLSTRINGS[0]))))
 			break;
 
 		if (--row < term.top)
