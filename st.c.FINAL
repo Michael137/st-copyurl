@@ -2668,10 +2668,11 @@ copyurl(const Arg *arg) {
 		tsetcolor(sel.nb.y, sel.ob.x, sel.oe.x + 1, defaultfg, defaultbg);
 
 	int i = 0,
-		row = 0,
-		col = 0,
-		startrow = 0,
-		colend = 0;
+		row = 0, /* row of current URL */
+		col = 0, /* column of current URL start */
+		startrow = 0, /* row of last occurrence */
+		colend = 0, /* column of last occurrence */
+		passes = 0; /* how many rows have been scanned */
 
 	char *linestr = calloc(sizeof(char), term.col+1); /* assume ascii */
 	char *c = NULL,
@@ -2688,7 +2689,7 @@ copyurl(const Arg *arg) {
  	** Scan from (term.bot,term.col) to (0,0) and find
 	** next occurrance of a URL
 	*/
-	do {
+	while(passes !=term.bot + 2) {
 		/* Read in each column of every row until
  		** we hit previous occurrence of URL
 		*/
@@ -2708,7 +2709,8 @@ copyurl(const Arg *arg) {
 			row = term.bot;
 
 		colend = term.col;
-	} while (row != startrow);
+		passes++;
+	};
 
 	if (match) {
 		/* must happen before trim */
